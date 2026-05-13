@@ -10,6 +10,7 @@ export async function askAssistant({
   selectedCode,
   fullCodeContext,
   codingLanguage,
+  explanationLanguage,
   question,
 }) {
   const retrievedChunks = retrieveFromLocalKnowledgeBase({
@@ -23,6 +24,7 @@ export async function askAssistant({
       selectedCode,
       fullCodeContext,
       codingLanguage,
+      outputLanguage: explanationLanguage,
       question,
       retrievedChunks,
     })
@@ -32,6 +34,7 @@ export async function askAssistant({
         selectedCode,
         fullCodeContext,
         codingLanguage,
+        outputLanguage: explanationLanguage,
         question,
         retrievedChunks,
       }),
@@ -47,6 +50,7 @@ export async function askAssistant({
       selectedCode,
       fullCodeContext,
       codingLanguage,
+      explanationLanguage,
       question,
     }),
   })

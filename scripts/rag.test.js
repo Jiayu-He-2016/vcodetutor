@@ -65,4 +65,15 @@ const mockResponse = generateMockResponse({
 assert.equal(mockResponse.mode, 'mock')
 assert.ok(mockResponse.sources.length > 0)
 
+const chineseMockResponse = generateMockResponse({
+  selectedCode,
+  fullCodeContext: selectedCode,
+  codingLanguage: 'javascript',
+  outputLanguage: 'chinese',
+  question: '为什么这里要这样写？',
+  retrievedChunks,
+})
+
+assert.match(chineseMockResponse.summary, /这段|因为/)
+
 console.log('RAG pipeline tests passed')

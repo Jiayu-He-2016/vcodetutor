@@ -12,7 +12,6 @@ function conceptsFor(code, codingLanguage = 'javascript') {
     code,
     codingLanguage,
     explanationLanguage: 'english',
-    explanationLevel: 'beginner',
   }).map((line) => line.concept)
 }
 
@@ -21,7 +20,6 @@ function explain(code, codingLanguage = 'javascript') {
     code,
     codingLanguage,
     explanationLanguage: 'english',
-    explanationLevel: 'intermediate',
   })
 }
 
@@ -110,7 +108,6 @@ const pythonNotes = createStudyNotes({
   code: pythonApiCode,
   codingLanguage: 'python',
   explanations: pythonApiExplanations,
-  explanationLevel: 'beginner',
 })
 assert.equal(detectCodingLanguage(pythonApiCode), 'python')
 assert.ok(pythonNotes.summary.includes('Python'))
@@ -130,5 +127,29 @@ const summary = summarizeCode({
 
 assert.match(summary.overview, /function/)
 assert.ok(summary.bullets.some((bullet) => bullet.includes('Main concepts used')))
+
+const chineseExplanations = translateCode({
+  code: javascriptCode,
+  codingLanguage: 'javascript',
+  explanationLanguage: 'chinese',
+})
+const chineseNotes = createStudyNotes({
+  code: javascriptCode,
+  codingLanguage: 'javascript',
+  explanations: chineseExplanations,
+  explanationLanguage: 'chinese',
+})
+const chineseCards = createFlashcards(chineseExplanations)
+const chineseSummary = summarizeCode({
+  code: javascriptCode,
+  codingLanguage: 'javascript',
+  explanations: chineseExplanations,
+  explanationLanguage: 'chinese',
+})
+
+assert.ok(chineseExplanations[0].explanation.includes('这一行'))
+assert.ok(chineseNotes.summary.includes('这段'))
+assert.ok(chineseCards.some((card) => /function|变量|return/.test(card.front + card.back)))
+assert.ok(chineseSummary.bullets.some((bullet) => bullet.includes('主要概念')))
 
 console.log('mockTranslator tests passed')

@@ -18,7 +18,6 @@ function App() {
   const [code, setCode] = useState(sampleCode)
   const [codingLanguage, setCodingLanguage] = useState('javascript')
   const [explanationLanguage, setExplanationLanguage] = useState('english')
-  const [explanationLevel, setExplanationLevel] = useState('beginner')
   const [hoveredLine, setHoveredLine] = useState(null)
   const [selectedLine, setSelectedLine] = useState(null)
   const [codeWarning, setCodeWarning] = useState('')
@@ -38,7 +37,6 @@ function App() {
         code: sampleCode,
         codingLanguage: 'javascript',
         explanationLanguage: 'english',
-        explanationLevel: 'beginner',
       }),
     [],
   )
@@ -49,7 +47,7 @@ function App() {
       code: sampleCode,
       codingLanguage: 'javascript',
       explanations: initialExplanations,
-      explanationLevel: 'beginner',
+      explanationLanguage: 'english',
     }),
   )
   const [flashcards, setFlashcards] = useState([])
@@ -61,21 +59,20 @@ function App() {
         code,
         codingLanguage,
         explanations,
+        explanationLanguage,
       }),
-    [code, codingLanguage, explanations],
+    [code, codingLanguage, explanationLanguage, explanations],
   )
 
   function translateWithSettings({
     nextCode = code,
     nextCodingLanguage = codingLanguage,
     nextExplanationLanguage = explanationLanguage,
-    nextExplanationLevel = explanationLevel,
   } = {}) {
     const nextExplanations = translateCode({
       code: nextCode,
       codingLanguage: nextCodingLanguage,
       explanationLanguage: nextExplanationLanguage,
-      explanationLevel: nextExplanationLevel,
     })
 
     setExplanations(nextExplanations)
@@ -84,7 +81,7 @@ function App() {
         code: nextCode,
         codingLanguage: nextCodingLanguage,
         explanations: nextExplanations,
-        explanationLevel: nextExplanationLevel,
+        explanationLanguage: nextExplanationLanguage,
       }),
     )
     setHoveredLine(null)
@@ -138,18 +135,15 @@ function App() {
     const nextSettings = {
       codingLanguage,
       explanationLanguage,
-      explanationLevel,
       [setting]: value,
     }
 
     if (setting === 'codingLanguage') setCodingLanguage(value)
     if (setting === 'explanationLanguage') setExplanationLanguage(value)
-    if (setting === 'explanationLevel') setExplanationLevel(value)
 
     translateWithSettings({
       nextCodingLanguage: nextSettings.codingLanguage,
       nextExplanationLanguage: nextSettings.explanationLanguage,
-      nextExplanationLevel: nextSettings.explanationLevel,
     })
   }
 
@@ -244,7 +238,13 @@ function App() {
     ])
   }
 
-  async function handleAskAssistant(prompt = 'What does this highlighted code do in this program?') {
+  function defaultAssistantPrompt() {
+    return explanationLanguage === 'chinese'
+      ? '这段高亮代码在这个程序里做什么？'
+      : 'What does this highlighted code do in this program?'
+  }
+
+  async function handleAskAssistant(prompt = defaultAssistantPrompt()) {
     const selectedCode = getFallbackSelectedCode()
     scrollToAssistant()
 
@@ -268,6 +268,7 @@ function App() {
         selectedCode,
         fullCodeContext: code,
         codingLanguage,
+        explanationLanguage,
         question: prompt,
       })
 
@@ -284,10 +285,8 @@ function App() {
       <TopBar
         codingLanguage={codingLanguage}
         explanationLanguage={explanationLanguage}
-        explanationLevel={explanationLevel}
         onCodingLanguageChange={(value) => handleSettingsChange('codingLanguage', value)}
         onExplanationLanguageChange={(value) => handleSettingsChange('explanationLanguage', value)}
-        onExplanationLevelChange={(value) => handleSettingsChange('explanationLevel', value)}
         onTranslate={handleTranslate}
         onGenerateFlashcards={handleGenerateFlashcards}
       />
@@ -319,6 +318,7 @@ function App() {
         <div ref={assistantRef}>
           <AssistantPanel
             mode={getAssistantMode()}
+            explanationLanguage={explanationLanguage}
             status={assistantStatus}
             error={assistantError}
             messages={assistantMessages}

@@ -1,27 +1,21 @@
 import { useEffect, useRef } from 'react'
 
-const followUpCards = [
-  {
-    label: 'Why use this here?',
-    prompt: 'Why use this here?',
-  },
-  {
-    label: 'Explain key terms',
-    prompt: 'Explain key terms',
-  },
-  {
-    label: 'Common mistake',
-    prompt: 'Common mistake',
-  },
-  {
-    label: 'Give me a practice question',
-    prompt: 'Give me a practice question',
-  },
-  {
-    label: 'Explain step by step',
-    prompt: 'Explain step by step',
-  },
-]
+const followUpCards = {
+  english: [
+    { label: 'Why use this here?', prompt: 'Why use this here?' },
+    { label: 'Explain key terms', prompt: 'Explain key terms' },
+    { label: 'Common mistake', prompt: 'Common mistake' },
+    { label: 'Give me a practice question', prompt: 'Give me a practice question' },
+    { label: 'Explain step by step', prompt: 'Explain step by step' },
+  ],
+  chinese: [
+    { label: '为什么这里要这样写？', prompt: '为什么这里要这样写？' },
+    { label: '解释关键术语', prompt: '解释关键术语' },
+    { label: '常见错误', prompt: '常见错误' },
+    { label: '给我一个练习题', prompt: '给我一个练习题' },
+    { label: '一步一步解释', prompt: '一步一步解释' },
+  ],
+}
 
 function latestDebugResult(messages) {
   return [...messages].reverse().find((message) => message.result)?.result
@@ -29,6 +23,7 @@ function latestDebugResult(messages) {
 
 export default function AssistantPanel({
   mode,
+  explanationLanguage,
   status,
   error,
   messages,
@@ -36,6 +31,7 @@ export default function AssistantPanel({
 }) {
   const isLoading = status === 'loading'
   const chatScrollRef = useRef(null)
+  const cards = followUpCards[explanationLanguage] ?? followUpCards.english
   const debugResult = import.meta.env.VITE_ASSISTANT_DEBUG === 'true' ? latestDebugResult(messages) : null
 
   useEffect(() => {
@@ -55,7 +51,9 @@ export default function AssistantPanel({
               {mode}
             </span>
           </div>
-          <p className="mt-1 text-sm text-stone-500">Your code tutor for highlighted code</p>
+          <p className="mt-1 text-sm text-stone-500">
+            {explanationLanguage === 'chinese' ? '用初学者友好的方式解释高亮代码' : 'Your code tutor for highlighted code'}
+          </p>
         </div>
       </div>
 
@@ -73,7 +71,9 @@ export default function AssistantPanel({
             </div>
             <div className="max-w-3xl rounded-2xl rounded-tl-sm border border-teal-100 bg-teal-50 p-4">
               <p className="text-sm leading-6 text-stone-800">
-                Highlight a small piece of code, then ask. I’ll start with a short explanation of what it does in this program.
+                {explanationLanguage === 'chinese'
+                  ? '高亮一小段代码后提问。我会先用简短的话解释它在这个程序里做什么。'
+                  : 'Highlight a small piece of code, then ask. I’ll start with a short explanation of what it does in this program.'}
               </p>
             </div>
           </div>
@@ -97,7 +97,7 @@ export default function AssistantPanel({
             <div key={message.id} className="flex justify-end text-left">
               <article className="max-w-2xl rounded-2xl rounded-tr-sm border border-stone-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">
-                  You asked
+                  {explanationLanguage === 'chinese' ? '你问了' : 'You asked'}
                 </p>
                 <p className="mt-1 text-sm leading-6 text-stone-800">{message.text}</p>
               </article>
@@ -120,7 +120,7 @@ export default function AssistantPanel({
               VT
             </div>
             <div className="max-w-3xl rounded-2xl rounded-tl-sm border border-teal-100 bg-teal-50 p-4 text-sm text-stone-600">
-              Reading your highlighted code...
+              {explanationLanguage === 'chinese' ? '正在阅读你高亮的代码...' : 'Reading your highlighted code...'}
             </div>
           </div>
         )}
@@ -128,10 +128,10 @@ export default function AssistantPanel({
         {messages.length > 0 && (
           <div className="border-t border-stone-100 pt-4 text-left">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">
-              Ask a follow-up
+              {explanationLanguage === 'chinese' ? '继续追问' : 'Ask a follow-up'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {followUpCards.map((card) => (
+              {cards.map((card) => (
                 <button
                   key={card.prompt}
                   type="button"

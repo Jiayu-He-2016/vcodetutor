@@ -1,4 +1,4 @@
-import { codingLanguages, explanationLanguages, explanationLevels } from '../data/options'
+import { codingLanguages, explanationLanguages } from '../data/options'
 
 function SelectControl({ label, value, options, onChange }) {
   return (
@@ -22,10 +22,8 @@ function SelectControl({ label, value, options, onChange }) {
 export default function TopBar({
   codingLanguage,
   explanationLanguage,
-  explanationLevel,
   onCodingLanguageChange,
   onExplanationLanguageChange,
-  onExplanationLevelChange,
   onTranslate,
   onGenerateFlashcards,
 }) {
@@ -56,12 +54,6 @@ export default function TopBar({
             value={explanationLanguage}
             options={explanationLanguages}
             onChange={onExplanationLanguageChange}
-          />
-          <SelectControl
-            label="Level"
-            value={explanationLevel}
-            options={explanationLevels}
-            onChange={onExplanationLevelChange}
           />
 
           <button

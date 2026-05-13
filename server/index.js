@@ -28,6 +28,7 @@ app.post('/api/ask-assistant', async (request, response) => {
       selectedCode = '',
       fullCodeContext = '',
       codingLanguage = 'javascript',
+      explanationLanguage = 'english',
       question = '',
     } = request.body ?? {}
 
@@ -54,6 +55,7 @@ app.post('/api/ask-assistant', async (request, response) => {
       selectedCode,
       fullCodeContext,
       codingLanguage,
+      outputLanguage: explanationLanguage,
       question,
       retrievedChunks,
     })

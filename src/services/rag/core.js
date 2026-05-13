@@ -104,6 +104,7 @@ export function augmentPromptWithRetrievedContext({
   selectedCode,
   fullCodeContext,
   codingLanguage,
+  outputLanguage = 'english',
   question,
   retrievedChunks,
 }) {
@@ -114,10 +115,15 @@ export function augmentPromptWithRetrievedContext({
     )
     .join('\n\n')
 
+  const responseLanguage = outputLanguage === 'chinese'
+    ? 'Chinese. Use natural beginner-friendly Chinese. Keep programming keywords, package names, function names, and code syntax in their original form when helpful.'
+    : 'English. Use beginner-friendly English.'
+
   return {
     instructions:
-      'You are VCodeTutor Ask Assistant, a friendly code tutor. Explain highlighted code to a beginner. Ground the answer in the selected code and retrieved local knowledge base context. If there is no user question, answer: "What does this highlighted code do in this program?" Keep the summary concise. If there is a follow-up question, focus only on that question. If you infer something from surrounding code, label it as an inference. Return concise JSON with summary, stepByStep, keyConcepts, commonMistakes, tryThis, and sources.',
+      `You are VCodeTutor Ask Assistant, a friendly code tutor. Explain highlighted code to a beginner. Respond in ${responseLanguage} Ground the answer in the selected code and retrieved local knowledge base context. If there is no user question, answer: "What does this highlighted code do in this program?" Keep the summary concise. If there is a follow-up question, focus only on that question. If you infer something from surrounding code, label it as an inference. Return concise JSON with summary, stepByStep, keyConcepts, commonMistakes, tryThis, and sources.`,
     input: `Selected language: ${codingLanguage}
+Response language: ${outputLanguage}
 
 Optional user question:
 ${question || 'No extra question provided.'}
@@ -140,6 +146,7 @@ ${context || 'No retrieved context was available.'}`,
 export function generateMockResponse({
   selectedCode,
   codingLanguage,
+  outputLanguage = 'english',
   question,
   retrievedChunks,
 }) {
@@ -159,21 +166,28 @@ export function generateMockResponse({
       concepts,
       selectedLines,
       codingLanguage,
+      outputLanguage,
     }),
     stepByStep: selectedLines.slice(0, 5).map((line, index) => ({
-      label: `Step ${index + 1}`,
-      text: explainLine(line, codingLanguage),
+      label: outputLanguage === 'chinese' ? `步骤 ${index + 1}` : `Step ${index + 1}`,
+      text: explainLine(line, codingLanguage, outputLanguage),
     })),
     keyConcepts: concepts.map((concept) => ({
       term: concept,
-      definition: conceptDefinition(concept),
+      definition: conceptDefinition(concept, outputLanguage),
     })),
-    commonMistakes: [
-      'Do not study the highlighted line in isolation if it depends on a value created nearby.',
-      'Check whether the selected code creates a value, checks a condition, repeats work, or returns a result.',
-    ],
-    tryThis:
-      'Change one input value, run the code again, and trace which selected line changes behavior first.',
+    commonMistakes: outputLanguage === 'chinese'
+      ? [
+          '不要只孤立地看高亮行；如果它依赖前面创建的值，也要一起看。',
+          '先判断这段代码是在创建值、检查条件、重复工作，还是返回结果。',
+        ]
+      : [
+          'Do not study the highlighted line in isolation if it depends on a value created nearby.',
+          'Check whether the selected code creates a value, checks a condition, repeats work, or returns a result.',
+        ],
+    tryThis: outputLanguage === 'chinese'
+      ? '试着改一个输入值，再跟踪哪一行最先改变行为。'
+      : 'Change one input value, run the code again, and trace which selected line changes behavior first.',
     sources: retrievedChunks.map(formatSource),
   }
 }
@@ -262,7 +276,17 @@ function inferConcepts(code, language) {
   return concepts.length ? concepts : ['program flow']
 }
 
-function explainLine(line, language) {
+function explainLine(line, language, outputLanguage = 'english') {
+  if (outputLanguage === 'chinese') {
+    if (/\b(function|def)\b|=>/.test(line)) return `这一行在 ${languageDisplay(language)} 里定义可复用的行为。`
+    if (/\bif\b/.test(line)) return '这一行检查条件，决定后面的代码块是否运行。'
+    if (/\bfor\b|\bwhile\b/.test(line)) return '这一行开始重复执行的 loop。'
+    if (/\breturn\b/.test(line)) return '这一行把结果返回给调用者。'
+    if (/\bconst\b|\blet\b|=/.test(line)) return '这一行保存或更新一个有名字的值。'
+    if (/\bimport\b|#include/.test(line)) return '这一行引入后面会用到的工具或代码。'
+    return `这一行是 ${languageDisplay(language)} 程序流程的一部分。`
+  }
+
   if (/\b(function|def)\b|=>/.test(line)) return `This defines reusable behavior in ${language}.`
   if (/\bif\b/.test(line)) return 'This checks a condition before running the next block.'
   if (/\bfor\b|\bwhile\b/.test(line)) return 'This starts repeated work controlled by a loop.'
@@ -274,16 +298,43 @@ function explainLine(line, language) {
 
 function followUpIntent(question = '') {
   const normalized = question.toLowerCase()
-  if (normalized.includes('why use')) return 'why'
-  if (normalized.includes('key term')) return 'terms'
-  if (normalized.includes('common mistake')) return 'mistake'
-  if (normalized.includes('practice')) return 'practice'
-  if (normalized.includes('step by step')) return 'steps'
+  if (normalized.includes('why use') || question.includes('为什么')) return 'why'
+  if (normalized.includes('key term') || question.includes('关键术语')) return 'terms'
+  if (normalized.includes('common mistake') || question.includes('常见错误')) return 'mistake'
+  if (normalized.includes('practice') || question.includes('练习')) return 'practice'
+  if (normalized.includes('step by step') || question.includes('一步一步')) return 'steps'
   return 'summary'
 }
 
-function buildSummaryForIntent({ intent, firstLine, concepts, selectedLines, codingLanguage }) {
+function buildSummaryForIntent({ intent, firstLine, concepts, selectedLines, codingLanguage, outputLanguage }) {
   const codeLabel = truncate(firstLine, 90)
+  const language = languageDisplay(codingLanguage)
+
+  if (outputLanguage === 'chinese') {
+    const conceptText = concepts.map(conceptPhraseZh).join('、')
+    const firstConcept = conceptPhraseZh(concepts[0] ?? 'program flow')
+    if (intent === 'why') {
+      return `这段高亮代码放在这里，是因为程序正好需要处理 ${firstConcept}。可以看看它接收了什么值，以及后面的代码是否依赖它。`
+    }
+
+    if (intent === 'terms') {
+      return `这段代码里的关键概念有：${conceptText}。初学时，重点看它是在命名值、检查条件、重复工作，还是返回结果。`
+    }
+
+    if (intent === 'mistake') {
+      return `常见错误是只看 “${codeLabel}” 这一行本身。请同时检查它是否依赖前面创建的变量、必须成立的条件，或后面会使用的 return 值。`
+    }
+
+    if (intent === 'practice') {
+      return `练习题：如果 “${codeLabel}” 用到的输入或变量改变了，这段高亮代码的行为会怎样变化？先预测，再运行验证。`
+    }
+
+    if (intent === 'steps') {
+      return `一步一步看，这段 ${language} 高亮代码有 ${selectedLines.length} 行有意义的内容。把每一行当成一个小动作，再把这些动作连成完整流程。`
+    }
+
+    return `这段高亮的 ${language} 代码主要处理 ${conceptText}。在这个程序里，它从 “${codeLabel}” 开始，帮助程序把当前值或条件推进到下一步结果。`
+  }
 
   if (intent === 'why') {
     return `This highlighted code is useful here because it handles ${concepts[0] ?? 'one part of the program flow'} at the exact point where the program needs it. Look at the surrounding lines to see what value it receives and what later code depends on it.`
@@ -302,13 +353,29 @@ function buildSummaryForIntent({ intent, firstLine, concepts, selectedLines, cod
   }
 
   if (intent === 'steps') {
-    return `Step by step, this ${codingLanguage} selection runs ${selectedLines.length} meaningful line${selectedLines.length === 1 ? '' : 's'}. Read each line as a small action, then connect the actions into one flow.`
+    return `Step by step, this ${language} selection runs ${selectedLines.length} meaningful line${selectedLines.length === 1 ? '' : 's'}. Read each line as a small action, then connect the actions into one flow.`
   }
 
-  return `This highlighted ${codingLanguage} code handles ${concepts.join(', ')}. In this program, it starts with "${codeLabel}" and helps move the program from the current value or condition toward the next result.`
+  return `This highlighted ${language} code handles ${concepts.join(', ')}. In this program, it starts with "${codeLabel}" and helps move the program from the current value or condition toward the next result.`
 }
 
-function conceptDefinition(concept) {
+function conceptDefinition(concept, outputLanguage = 'english') {
+  if (outputLanguage === 'chinese') {
+    const definitions = {
+      function: '一段可复用的代码，可以接收输入并产生结果。',
+      variable: '给一个值起名字，方便后面的代码继续使用。',
+      conditional: '一个判断点，条件成立时才运行对应代码。',
+      loop: '一种重复执行工作的结构。',
+      'return value': 'function 交回给调用者的结果。',
+      import: '准备代码，让当前文件可以使用其他模块、包或库。',
+      'async or API work': '处理网络请求等稍后才完成的任务。',
+      'typed value': '声明时带有数据类型的值。',
+      'program flow': '代码运行的顺序，以及值如何在程序里移动。',
+    }
+
+    return definitions[concept] ?? '这段代码里用到的一个编程概念。'
+  }
+
   const definitions = {
     function: 'A reusable block of code that can receive inputs and produce a result.',
     variable: 'A name that stores a value so later code can refer to it.',
@@ -322,6 +389,33 @@ function conceptDefinition(concept) {
   }
 
   return definitions[concept] ?? 'A programming idea used by the selected code.'
+}
+
+function conceptPhraseZh(concept) {
+  const phrases = {
+    function: 'function',
+    variable: '变量',
+    conditional: '条件判断',
+    loop: 'loop',
+    'return value': 'return 值',
+    import: 'import',
+    'async or API work': '异步或 API 任务',
+    'typed value': '带类型的值',
+    'program flow': '程序流程',
+  }
+
+  return phrases[concept] ?? concept
+}
+
+function languageDisplay(language) {
+  const names = {
+    javascript: 'JavaScript',
+    python: 'Python',
+    java: 'Java',
+    cpp: 'C++',
+  }
+
+  return names[language] ?? language
 }
 
 function truncate(text, limit) {

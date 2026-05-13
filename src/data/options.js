@@ -7,14 +7,7 @@ export const codingLanguages = [
 
 export const explanationLanguages = [
   { value: 'english', label: 'English' },
-  { value: 'chinese', label: 'Chinese' },
-  { value: 'spanish', label: 'Spanish' },
-]
-
-export const explanationLevels = [
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
+  { value: 'chinese', label: '中文 / Chinese' },
 ]
 
 export const sampleCode = `function greetStudent(name) {
